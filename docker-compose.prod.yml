@@ -2,16 +2,12 @@ services:
   postgres:
     image: ghcr.io/insforge/postgres:v15.13.1
     container_name: insforge-postgres
-    # We run as root initially to fix the permission issue
-    user: root
+    # We remove 'user: root' because Coolify handles the mount.
+    # We update the config_file path to match the UI setting.
     command: >
-      sh -c "
-      chown 999:999 /etc/postgresql/postgresql.conf &&
-      chmod 644 /etc/postgresql/postgresql.conf &&
-      exec gosu postgres postgres 
-      -c config_file=/etc/postgresql/postgresql.conf 
+      postgres 
+      -c config_file=/etc/postgresql.conf 
       -c app.encryption_key='${ENCRYPTION_KEY:-${JWT_SECRET:-dev-secret-please-change-in-production}}'
-      "
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
