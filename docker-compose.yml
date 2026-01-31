@@ -4,7 +4,6 @@ services:
   postgres:
     image: ghcr.io/insforge/postgres:v15.13.1
     container_name: insforge-postgres
-    # Start as root to fix the mount permissions, Postgres will drop to 'postgres' user automatically
     user: root
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
@@ -15,11 +14,12 @@ services:
       - ./docker-init/db/db-init.sql:/docker-entrypoint-initdb.d/01-init.sql
       - ./docker-init/db/jwt.sql:/docker-entrypoint-initdb.d/02-jwt.sql
       - ./docker-init/db/postgresql.conf:/etc/postgresql/postgresql.conf
-    # This command fixes the permission on the config file before launching the DB
+    # We fix permissions as root, then switch to the 'postgres' user to run the engine
     command: >
       sh -c "
+      chown postgres:postgres /etc/postgresql/postgresql.conf &&
       chmod 644 /etc/postgresql/postgresql.conf &&
-      exec postgres -c config_file=/etc/postgresql/postgresql.conf -c app.encryption_key='${ENCRYPTION_KEY:-${JWT_SECRET:-dev-secret-please-change-in-production}}'
+      exec gosu postgres postgres -c config_file=/etc/postgresql/postgresql.conf -c app.encryption_key='${ENCRYPTION_KEY:-${JWT_SECRET:-dev-secret-please-change-in-production}}'
       "
     ports:
       - "54321:5432"
