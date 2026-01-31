@@ -2,10 +2,11 @@ version: '3.8'
 
 services:
   postgres:
-    user: root
     image: ghcr.io/insforge/postgres:v15.13.1
     container_name: insforge-postgres
-    command: postgres -c config_file=/etc/postgresql/postgresql.conf -c app.encryption_key='${ENCRYPTION_KEY:-${JWT_SECRET:-dev-secret-please-change-in-production}}'
+    # We remove the explicit config_file flag if we mount it to the data directory,
+    # or we ensure the permissions are open.
+    command: postgres -c app.encryption_key='${ENCRYPTION_KEY:-${JWT_SECRET:-dev-secret-please-change-in-production}}'
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
@@ -14,18 +15,20 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./docker-init/db/db-init.sql:/docker-entrypoint-initdb.d/01-init.sql
       - ./docker-init/db/jwt.sql:/docker-entrypoint-initdb.d/02-jwt.sql
-      - ./docker-init/db/postgresql.conf:/etc/postgresql/postgresql.conf
+      # Mapping directly into the data directory usually solves the 'Permission Denied' 
+      # because the entrypoint script fixes permissions in /var/lib/postgresql/data
+      - ./docker-init/db/postgresql.conf:/var/lib/postgresql/data/postgresql.conf
     ports:
       - "54321:5432"
     networks:
       - insforge-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-insforge}"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s # Gives it time to run the init scripts
-
+      start_period: 30s
+      
   postgrest:
     image: postgrest/postgrest:v12.2.12
     container_name: insforge-postgrest
