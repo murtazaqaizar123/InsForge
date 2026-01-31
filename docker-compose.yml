@@ -4,20 +4,18 @@ services:
   postgres:
     image: ghcr.io/insforge/postgres:v15.13.1
     container_name: insforge-postgres
-    # We remove the explicit config_file flag if we mount it to the data directory,
-    # or we ensure the permissions are open.
-    command: postgres -c app.encryption_key='${ENCRYPTION_KEY:-${JWT_SECRET:-dev-secret-please-change-in-production}}'
+    # We explicitly point to the config file in the mounted directory
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf -c app.encryption_key='${ENCRYPTION_KEY:-${JWT_SECRET:-dev-secret-please-change-in-production}}'
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-insforge}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./docker-init/db/db-init.sql:/docker-entrypoint-initdb.d/01-init.sql
-      - ./docker-init/db/jwt.sql:/docker-entrypoint-initdb.d/02-jwt.sql
-      # Mapping directly into the data directory usually solves the 'Permission Denied' 
-      # because the entrypoint script fixes permissions in /var/lib/postgresql/data
-      - ./docker-init/db/postgresql.conf:/var/lib/postgresql/data/postgresql.conf
+      # Mount the folder containing the SQL and CONF files
+      - ./docker-init/db:/docker-entrypoint-initdb.d
+      # Mount the same folder to etc for the config file access
+      - ./docker-init/db:/etc/postgresql
     ports:
       - "54321:5432"
     networks:
