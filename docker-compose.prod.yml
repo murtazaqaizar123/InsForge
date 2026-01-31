@@ -2,7 +2,7 @@ services:
   postgres:
     image: ghcr.io/insforge/postgres:v15.13.1
     container_name: insforge-postgres
-    # We use the absolute path that Coolify manages
+    # We use the absolute path that Coolify manages in its UI
     command: >
       postgres 
       -c config_file=/etc/postgresql/postgresql.conf 
@@ -15,7 +15,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./docker-init/db/db-init.sql:/docker-entrypoint-initdb.d/01-init.sql
       - ./docker-init/db/jwt.sql:/docker-entrypoint-initdb.d/02-jwt.sql
-      # Mount the file Coolify created directly
+      # Absolute path mount for the config file managed by Coolify
       - /etc/postgresql/postgresql.conf:/etc/postgresql/postgresql.conf
     ports:
       - "54321:5432"
@@ -26,9 +26,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 40s
+      start_period: 60s
     restart: unless-stopped
-
+    
   postgrest:
     image: postgrest/postgrest:v12.2.12
     container_name: insforge-postgrest
