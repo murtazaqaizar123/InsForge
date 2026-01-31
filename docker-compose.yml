@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   postgres:
+    user: root
     image: ghcr.io/insforge/postgres:v15.13.1
     container_name: insforge-postgres
     command: postgres -c config_file=/etc/postgresql/postgresql.conf -c app.encryption_key='${ENCRYPTION_KEY:-${JWT_SECRET:-dev-secret-please-change-in-production}}'
