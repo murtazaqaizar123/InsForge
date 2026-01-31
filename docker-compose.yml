@@ -15,7 +15,7 @@ services:
       - ./docker-init/db/jwt.sql:/docker-entrypoint-initdb.d/02-jwt.sql
       - ./docker-init/db/postgresql.conf:/etc/postgresql/postgresql.conf
     ports:
-      - "5432:5432"
+      - "54321:5432"
     networks:
       - insforge-network
     healthcheck:
