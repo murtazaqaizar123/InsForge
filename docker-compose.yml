@@ -4,6 +4,7 @@ services:
   postgres:
     image: ghcr.io/insforge/postgres:v15.13.1
     container_name: insforge-postgres
+    # Start as root to ensure we can handle any volume permission issues
     user: root
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
@@ -11,15 +12,17 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-insforge}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      # We keep the SQL scripts as they are usually handled correctly
       - ./docker-init/db/db-init.sql:/docker-entrypoint-initdb.d/01-init.sql
       - ./docker-init/db/jwt.sql:/docker-entrypoint-initdb.d/02-jwt.sql
-      - ./docker-init/db/postgresql.conf:/etc/postgresql/postgresql.conf
-    # We fix permissions as root, then switch to the 'postgres' user to run the engine
+    # We bypass the .conf mount entirely and use flags for configuration
     command: >
       sh -c "
-      chown postgres:postgres /etc/postgresql/postgresql.conf &&
-      chmod 644 /etc/postgresql/postgresql.conf &&
-      exec gosu postgres postgres -c config_file=/etc/postgresql/postgresql.conf -c app.encryption_key='${ENCRYPTION_KEY:-${JWT_SECRET:-dev-secret-please-change-in-production}}'
+      chown -R postgres:postgres /var/lib/postgresql/data &&
+      exec gosu postgres postgres 
+      -c app.encryption_key='${ENCRYPTION_KEY:-${JWT_SECRET:-dev-secret-please-change-in-production}}'
+      -c listen_addresses='*'
+      -c max_connections=100
       "
     ports:
       - "54321:5432"
