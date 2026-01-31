@@ -2,11 +2,10 @@ services:
   postgres:
     image: ghcr.io/insforge/postgres:v15.13.1
     container_name: insforge-postgres
-    # We remove 'user: root' because Coolify handles the mount.
-    # We update the config_file path to match the UI setting.
+    # No 'user: root' needed, Coolify handles permissions for 'Files'
     command: >
       postgres 
-      -c config_file=/etc/postgresql.conf 
+      -c config_file=/etc/postgresql/postgresql.conf 
       -c app.encryption_key='${ENCRYPTION_KEY:-${JWT_SECRET:-dev-secret-please-change-in-production}}'
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
@@ -16,6 +15,8 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./docker-init/db/db-init.sql:/docker-entrypoint-initdb.d/01-init.sql
       - ./docker-init/db/jwt.sql:/docker-entrypoint-initdb.d/02-jwt.sql
+      # THIS LINE IS THE KEY: It tells the container to use the file from Coolify
+      - /etc/postgresql/postgresql.conf:/etc/postgresql/postgresql.conf
     ports:
       - "54321:5432"
     networks:
@@ -25,7 +26,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 60s
+      start_period: 80s # Increased to give more time for the existing DB to boot
     restart: unless-stopped
 
   postgrest:
