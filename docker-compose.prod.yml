@@ -2,7 +2,7 @@ services:
   postgres:
     image: ghcr.io/insforge/postgres:v15.13.1
     container_name: insforge-postgres
-    # No 'user: root' needed, Coolify handles permissions for 'Files'
+    # We use the absolute path that Coolify manages
     command: >
       postgres 
       -c config_file=/etc/postgresql/postgresql.conf 
@@ -15,7 +15,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./docker-init/db/db-init.sql:/docker-entrypoint-initdb.d/01-init.sql
       - ./docker-init/db/jwt.sql:/docker-entrypoint-initdb.d/02-jwt.sql
-      # THIS LINE IS THE KEY: It tells the container to use the file from Coolify
+      # Mount the file Coolify created directly
       - /etc/postgresql/postgresql.conf:/etc/postgresql/postgresql.conf
     ports:
       - "54321:5432"
@@ -26,7 +26,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 80s # Increased to give more time for the existing DB to boot
+      start_period: 40s
     restart: unless-stopped
 
   postgrest:
