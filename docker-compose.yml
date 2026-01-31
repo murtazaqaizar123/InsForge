@@ -4,18 +4,23 @@ services:
   postgres:
     image: ghcr.io/insforge/postgres:v15.13.1
     container_name: insforge-postgres
-    # We explicitly point to the config file in the mounted directory
-    command: postgres -c config_file=/etc/postgresql/postgresql.conf -c app.encryption_key='${ENCRYPTION_KEY:-${JWT_SECRET:-dev-secret-please-change-in-production}}'
+    # Start as root to fix the mount permissions, Postgres will drop to 'postgres' user automatically
+    user: root
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-insforge}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      # Mount the folder containing the SQL and CONF files
-      - ./docker-init/db:/docker-entrypoint-initdb.d
-      # Mount the same folder to etc for the config file access
-      - ./docker-init/db:/etc/postgresql
+      - ./docker-init/db/db-init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./docker-init/db/jwt.sql:/docker-entrypoint-initdb.d/02-jwt.sql
+      - ./docker-init/db/postgresql.conf:/etc/postgresql/postgresql.conf
+    # This command fixes the permission on the config file before launching the DB
+    command: >
+      sh -c "
+      chmod 644 /etc/postgresql/postgresql.conf &&
+      exec postgres -c config_file=/etc/postgresql/postgresql.conf -c app.encryption_key='${ENCRYPTION_KEY:-${JWT_SECRET:-dev-secret-please-change-in-production}}'
+      "
     ports:
       - "54321:5432"
     networks:
@@ -25,7 +30,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 60s
       
   postgrest:
     image: postgrest/postgrest:v12.2.12
